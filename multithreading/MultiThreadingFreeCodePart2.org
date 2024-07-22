@@ -1,0 +1,312 @@
+* Daemon thread and user Threads
+** On the basic of surface od execution, threads can be of two types
+    + Daemon Threads
+    + User Threads
+*** Program flow
+    - When a java program starts the main thread (main() methods thread) starts running immediately.
+    - We can start child threads from the main thread.
+    - The main thread is the last thread to finish exection in normal circumstances, because it has to perform various shutdown operation.
+
+*** Daemon threads
+    - Daemon threads are intended to be helper threads which can run in background and are of low priority. Eg GC thread.
+    - Daemon threads are terminated by the JVM, when all other user threads are terminated (done with their execution).
+    - so, under normal circumstances, *user threads are allowed to terminate once they are done with their execution*.
+    - However, *the daemon threads are shutdown by JVM once all other threads are done executing*.
+
+*** code
+#+Begin_src java
+  public class DaemonThreadClass {
+
+	public static void main(String[] args) {
+		
+		Thread daemonThread = new Thread(new DaemonHelper());
+		Thread userThread = new Thread(new UserThreadhelper());
+		daemonThread.setDaemon(true); 
+		
+		daemonThread.start();
+		userThread.start();
+	}
+}
+
+	class DaemonHelper implements Runnable {
+		@Override
+		public void run() {
+			int count =0;
+			while(count < 500) {
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				count++;
+				System.out.println("Deamon Thread running ");
+			}
+		}
+	}
+	
+	class UserThreadhelper implements Runnable {
+		@Override
+		public void run() {
+				try {
+					Thread.sleep(5000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				System.out.println("User Thread running ");
+		}
+	}
+#+End_src
+
+**** Explaination
+    + we have two threads classes DaemonHelper and UserThreadHelper
+    + DaemonHelper which run 25 times with sleep time of 1 sec.
+    + UserThreadHelper which run 1 time after 5 sec of main thread starts.
+    + During Execution, create two thread daemonThread and userThread.
+    + set daemonThread as true then start the threads(daemonThread and UserThread).
+    + first daemon Thread run one by one for 4 sec
+    + When the User Thread end or finish, then the daemon Threads are forced to terminate.
+
+* Thread Priority
+** Thread Schedular
+   1. There are 10 threads in runnable state, however there is only one available CPU,
+      - So only one thread can execute at a given time and others will have to wait.
+      - So who decides which thread gets to run on the CPU.
+      - This component is called as Thread Schedular.
+   2. Each Thread has certain priority and under normal circumstance the thread with higher priority gets to run on the CPU.
+   3. Priority value from 1 to 10 can be assigned to any thread.
+      - 1 priority is represented as *MIN_PRIORITY* and 10 priority is represented as *MAX_PRIORITY*.
+      - By default, the priority of a thread is 5, it's represented as *NORM_PRIORITY*.
+   4. Threads of the same priority value are executed in FIFO manner.
+      - The thread scheduler stores the threads in a queue.
+* Thread Synchronisation
+** Code
+#+Begin_Src java
+  public class Ex1_RaceCondition {
+	private static int count =0;
+
+	public static void main(String[] args) {
+		Thread one = new Thread( 
+				() -> {
+					for(int i=0;i<10000;i++)
+						count++;
+				}
+			);
+		Thread two = new Thread( 
+				() -> {
+					for(int i=0;i<10000;i++)
+						count++;
+				}
+			);
+		one.start();
+		two.start();
+
+		try {
+			one.join();
+			two.join();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		System.out.println("the value od count is "+count);
+	}
+    }
+#+End_src
+
+*** Explaination
+    - here the count value is 18000 some thing
+    - but we need 20000
+    - why this is happen, this event is called non atomic operation
+    - 1. load ; 2. increment ; 3. set back the value
+    - counter = 0; incrementvalue =1 -> thread 1
+    - counter = 0; incrementvalue =1 -> thread 2
+    - In thread 2 the counter must be 2, due to inconsistency
+    - The thread 1 and thread 2 are same time to access the counter 
+    - due to same resource i.e tocounter = 0 is also assign to thread 2 
+    - This is called race conditon.
+    - Overcome we use the synchronised keyword as method level or block level.
+    - Synchronised keyword said to jvm to allow only one thread can allow at given instant of time at any cost.
+    - Synchronised method section is also called critical section.
+      
+**** Synchronised method to overcome above condition
+#+Begin_src java
+  // instand of counter++ use increment()
+
+  private synchronized static void increment()
+	{
+	    counter++;
+	}
+
+#+End_src
+
+***** full code
+#+Begin_src java
+  public class Ex1_RaceCondition {
+	private static int count =0;
+	
+	public static void main(String[] args) {
+		Thread one = new Thread( 
+				() -> {
+					for(int i=0;i<10000;i++)
+						increment();
+				}
+			);
+		Thread two = new Thread( 
+				() -> {
+					for(int i=0;i<10000;i++)
+						increment();
+				}
+			);
+		one.start();
+		two.start();
+		
+		try {
+			one.join();
+			two.join();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		
+		// now we get 20000
+		System.out.println("the value od count is "+count);
+		
+	}
+	
+	private synchronized static void increment() {
+		count++;
+	}
+	
+}
+#+End_src
+
+* Problems of using synchronised blocks
+  - We can fixed the race condition problem by using synchronized keyword.
+  - But synchronized keyword have inherent problems with this particular approach.
+
+** working of synchronized keyword in java
+*** Monitor locks
+   - Each object in java is associated with monitor which is a mutual exclusion mechanism used for synchronization.
+   - When a thread enters a synchronized block or synchronized block or a method it attempts to acquire the monitor lock associated with the object
+   - on which the synchronization is applied.
+
+   - every java object we have this monitor lock also called intrinstic lock.
+     - Which needs to be acquired by the thread which wants to make use of the synchronized block or method.
+     - When a thread enters the synchronized block or method
+     - it attempts to acquire the monitor lock and if the lock is available
+     - the thread acquires the lock and proceeds to execute the synchronized code.
+     - so what do we mean by the lock us available i.e no thread will be currently holding that lock.
+     - if the lock is not available that is another thread is holding that lock
+     - then the thread enters a blocked state and it has to wait until the lock becomes available.
+     - The second step of this process is releasing of the monitor lock.
+     - When thread exits let's say the thread is going to exit after this execution is completed.
+     - It has to release the monitor lock and thus it allows other threads waiting for to acquired the lock and to proceed with thier execution.
+     - So the monitor lock used by the synchronized keyword is sometimes refered to as intrinsic lock or the monitored lock of the object instance.
+     - Each object in java has its own intrinsic lock and the synchronized keyword acquires and releases this lock implicitely.
+     - When used at the method level or the synchronised block.
+     - So what is the problem exactly, if we use this synchronized keyword at the method level.
+     - First problem is that it's a kind of course grained locking.
+     - When we use synchronized at the method level. It applies the log to the entire method body.
+     - even though in this case
+**** Example
+   - Imagine that there is a shared room that room could be used by just one person at a time.
+   - Then you hava to enter inside the room using some sort of lock you use the lock you
+   - open the door you go inside. After you use the room you get out and give to someone else.
+
+*** code
+#+Begin_src java
+  public class Ex3_ProblemOfSynchronised {
+private static int count1 =0;
+private static int count2 =0;
+	
+	public static void main(String[] args) {
+		Thread one = new Thread( 
+				() -> {
+					for(int i=0;i<10000;i++)
+						increment1();
+				}
+			);
+		Thread two = new Thread( 
+				() -> {
+					for(int i=0;i<10000;i++)
+						increment2();
+				}
+			);
+		one.start();
+		two.start();
+		
+		try {
+			one.join();
+			two.join();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		
+		// here the count value is 18000 some thing
+		// but we need 20000
+		System.out.println("the value of count1 is "+count1);
+		System.out.println("the value of count2 is "+count2);
+	}
+	
+	private synchronized static void increment1() {
+		count1++;
+	}
+	
+	private synchronized static void increment2() {
+		count2++;
+	}
+}
+#+End_src
+
+**** explaination problem
+     - Then the method level we face one method is wait for other method
+     - To over come this problem we use block level
+
+*** code for synchronized block
+#+Begin_src java
+  public class Ex3_ProblemOfSynchronised {
+  private static int count1 =0;
+  private static int count2 =0;
+
+	  public static void main(String[] args) {
+		  Thread one = new Thread( 
+				  () -> {
+					  for(int i=0;i<10000;i++)
+						  increment1();
+				  }
+			  );
+		  Thread two = new Thread( 
+				  () -> {
+					  for(int i=0;i<10000;i++)
+						  increment2();
+				  }
+			  );
+		  one.start();
+		  two.start();
+
+		  try {
+			  one.join();
+			  two.join();
+		  } catch (InterruptedException e) {
+			  e.printStackTrace();
+		  }
+
+		  // here the count value is 18000 some thing
+		  // but we need 20000
+		  System.out.println("the value of count1 is "+count1);
+		  System.out.println("the value of count2 is "+count2);
+	  }
+
+	  private static void increment1() {
+	      synchronized() {
+		    count1++;
+	      }
+	  }
+
+	  private static void increment2() {
+	      synchronized() {
+		    count2++;
+	      }
+	  }
+  }
+#+End_src
+
+**** explain
+    - synchronized block need a Object argument. So we declare private static final object log1 and log2

@@ -1,0 +1,198 @@
+* intro of multithreading
+ - An default programming languages are sequential in nature.
+ - Code execution happends *line by line* in usual scenario.
+   *example :*
+   #+Begin_src java
+     public class Runner {
+	 public static void main(String[] arg) {
+	     initDB();
+	     downloadData();
+	     processOnData();
+	     showTheResults();
+	     }
+	 }
+   #+End_src
+** Problem with above code:
+    - In a Single Threaded program these instructions will be executed one by one.
+    - The time consuming section of the code can freeze the entire application.
+    - In above, 1st initDB executet, 2nd downloadData(), then processOnData(), At last showTheResults() will execute.
+** Solution :
+    - Figure out the time consuming tasks and decide if they can be run separately.
+    - If yes, run such tack(s) in separate threads.
+
+*** Explaination the Code can slow down or freeze your entire process.
+    - movie and pop corn.
+** Improve above code
+
+** Definiation
+   Multithreading is the ability of CPU to perfrom different Tasks Concurrently.
+
+* ConCurrency vs Parallelism
+** ConCurrency
+   - Concurrency is like having multiple tasks to do
+   - but you only have one set of hand you switch
+   - between the tasks doing a little bit of each one at a time.
+*Example*
+   - if you play a guitar it's similar to that 
+   - Where you play different notes and cords using your nine fingers
+   - even though you play each note separately
+   - he switch is so fast and smooth that overall it appears as if everything is being played together
+** Parallelism
+   - having multiple task but now you have many friends to help you out
+   - Each friend works on a different task at the same time
+   - so, all the tasks get done faster
+
+** summary
+   - *Concurrency* doing multiple thingd all at once by quickly switching between the tasks
+   - *parallelism* is doing multiple things at once by having different parts of the task been done simultaneously by different entities.
+ 
+** In Technically
+
+* Process and Threads
+** Process
+   - Process is an instance of program execution.
+   - When you enter an Applcation, It's a process.
+   - The OS assigns it's own Stack and Heap memory area.
+
+** Thread
+   - Thread is a lightWeight process.
+   - It is a unit of execution within a given program.
+   - A single process may contain multiple threads.
+   - Each thread in the process shared the memory and resources.
+
+*** Example
+   - Let's imagine with have multiple thread, n threads, associated with a process.
+   - Somehow the CPU has to ensure that threads are given a chance to execute.
+   - One such approach is to use Time Slicing Algorithm.
+   - Usage time for the CPU is shared among different threads.
+
+** Pros and cons
+*** Pros
+   - We can build responsive applications.
+   - Better Resource Utilisation.
+   - Better Performant Application.
+
+*** Cons
+   - Synchronization is Tricky.
+   - Difficult to Design & Test Multi-Threading Apps.
+   - Threads Context switch is Expensive.
+
+* Thread LifeCycle
+** New State
+   - Every thread is in this state until we call start() on it.
+** Active state
+   - Every thread is in this state after we call start() on it. It has two sub states, runnable & running.
+** Blocked state
+   - Every Thread is in this state when it's waiting for some thread to finish.
+** Terminated
+   - Every Thread is in this state after it's done doing it's required task. 
+
+* Sequential Execution
+** Code
+#+Begin_Src java
+  class SequentialExecution {
+      public static void main() {  // Parent thread or main thread, it create by JVM
+	  demo1();
+	  demo2();
+      }
+
+      private static void demo1()
+      {
+	  for(int i=0; i<5 ;i++) {
+	     Sysout.out.println("demo 1 method "+i);
+	  }
+      }
+
+      private static void demo2()
+      {
+	  for(int i=0; i<5 ;i++) {
+             Sysout.out.println("demo 1 method "+i);
+	  }
+      }
+  }
+#+End_Src
+
+* Create threads using Running Interface
+* Create Threads using Thread class
+* Which approach is better?
+   - If we extend Thread then we can't extend any other class, usually a big Disadvantage.
+   - However, a class may implement more than ine interface, so while using Implements Runnable approach there is no restriction to extension of class now or in the future.
+
+* Join Methods()
+** Code Without join method
+#+Begin_src java
+public class JoinMethodExample {
+
+	public static void main(String[] args) {
+		// Anonimous inner class or lamda expressation
+		Thread one = new Thread(() -> {
+			for(int i=0 ; i < 5 ; i++) {
+				System.out.println("Thread 1 : "+ i);
+			} 
+		});
+		
+		Thread two = new Thread(() -> {
+			for(int i=0 ; i< 25 ; i++) {
+				System.out.println("Thread 2 : "+ i);
+			} 
+		});
+		
+		two.start();
+		one.start();
+		System.out.println("main thread over");	
+	}
+}
+#+End_src
+
+** Explanation
+   - First the main thread called by jvm with highest priority.
+   - After that the two threads (one and two) are executes.
+
+** A need went the Thread 1 is Executed after that Thread 2 execute
+   - We use .join() and join method throws an interrupted exception.
+   - In above code, i get two.join() which means after thread 2 execute, Other threads then execute.
+   - JVM wait for thread2 get executed.
+     
+
+** code with join method
+#+Begin_src java
+  public class JoinMethodExample {
+
+	  public static void main(String[] args) {
+		  // Anonimous inner class or lamda expressation
+		  Thread one = new Thread(() -> {
+			  for(int i=0 ; i < 5 ; i++) {
+				  System.out.println("Thread 1 : "+ i);
+			  } 
+		  });
+
+		  Thread two = new Thread(() -> {
+			  for(int i=0 ; i< 25 ; i++) {
+				  System.out.println("Thread 2 : "+ i);
+			  } 
+		  });
+
+		  two.start();
+		  one.start();
+		  two.join();  // throws an interreptedException
+		  System.out.println("main thread over");	
+	  }
+  }
+#+End_src
+
+** Questines
+*** Main Thread as the parent thread?
+   - When we start a program, usually the exection begins with main() method.
+   - This method runs on the main thread.
+   - This can be understood as the parent thread, since it spawns the threads.
+*** Independent execution of threads
+   - When you create and start other threads, they run concurrently eith the main thread unless instructed otherwise.
+   - So under normal circumstances, all threads run independent of each other.
+   - More explicitly, no thread waits for others.
+*** What is join()
+   - Imagine threads to be lines of execution. So, when we call .join() on a certain thread.
+   - It means the parent thread, the main thread in this case (could be any thread which created the thread on which .join() is being called) is saying
+   - *Hey Thread, once you are done executing you task, join my flow of execution*.
+   - It's like the parent thread waits for the completion of the child thread and then continues with its execution.
+
+
